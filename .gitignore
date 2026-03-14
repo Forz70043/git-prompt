@@ -1,0 +1,7 @@
+# Binary files
+wild-prompt
+git-branch-label
+*.deb
+
+# Temporary folders for build
+pkg/
