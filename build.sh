@@ -1,41 +1,77 @@
 #!/bin/bash
 
-# 1. Clean and create structure
+# --- CONFIGURATION ---
+APP_NAME="git-prompt"
+VERSION="1.0.0"
+MAINTAINER="Forz70043 <info@pisicchio.dev>"
+DESCRIPTION="Ultra-fast git branch indicator for shell prompt written in Go."
+
+echo "🚀 Starting build process for $APP_NAME v$VERSION..."
+
+# 1. Clean and create folder structure
+echo "📁 Preparing folders..."
 rm -rf pkg
 mkdir -p pkg/DEBIAN
 mkdir -p pkg/usr/local/bin
 
 # 2. Go compilation
-go build -o pkg/usr/local/bin/wild-prompt main.go
+echo "🐹 Compiling Go source..."
+go build -o pkg/usr/local/bin/$APP_NAME main.go
 
-# 3. File control
+# 3. Generate metadata file (control)
+echo "📝 Generating DEBIAN/control file..."
 cat <<EOF > pkg/DEBIAN/control
-Package: wild-prompt
-Version: 1.0.0
+Package: $APP_NAME
+Version: $VERSION
 Section: utils
 Priority: optional
 Architecture: amd64
-Maintainer: Forz70043 <info@pisicchio.dev>
-Description: Ultra-fast git branch indicator for shell prompt written in Go.
+Maintainer: $MAINTAINER
+Description: $DESCRIPTION
 
 EOF
 
-# 4. Creation of the postinst script to modify the PS1 variable in /etc/bash.bashrc
+# 4. Generate post-installation script (postinst)
+echo "📜 Generating post-installation script..."
 cat <<'EOF' > pkg/DEBIAN/postinst
 #!/bin/bash
-PROMPT_LINE='export PS1="\[\e[36m\]\u@\h\[\e[m\]:\[\e[34m\]\w\[\e[33m\]\$(wild-prompt)\[\e[m\] \$ "'
-if [ -f "/etc/bash.bashrc" ]; then
-    if ! grep -q "wild-prompt" "/etc/bash.bashrc"; then
-        echo -e "\n# Wild Prompt\n$PROMPT_LINE" >> "/etc/bash.bashrc"
+set -e
+BIN_NAME="git-prompt"
+
+PROMPT_CODE='export PS1="\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[33m\]\$('$BIN_NAME')\[\033[00m\] \$ "'
+
+inject_prompt() {
+    local target_file="$1"
+    if [ -f "$target_file" ] && ! grep -q "$BIN_NAME" "$target_file"; then
+        echo -e "\n# Git Prompt Integration\n$PROMPT_CODE" >> "$target_file"
+        echo "✅ Prompt added to $target_file"
+    fi
+}
+
+# Injection global for the system
+inject_prompt "/etc/bash.bashrc"
+
+# Injection for the real user who ran sudo
+if [ -n "$SUDO_USER" ]; then
+    REAL_USER_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+    if [ -n "$REAL_USER_HOME" ]; then
+        inject_prompt "$REAL_USER_HOME/.bashrc"
     fi
 fi
+
+exit 0
 EOF
 
-# 5. SET PERMISSION
+# 5. Configuration of Permissions
+echo "🔐 Configuring permissions..."
 chmod 755 pkg/DEBIAN/postinst
-chmod 755 pkg/usr/local/bin/wild-prompt
+chmod 755 pkg/usr/local/bin/$APP_NAME
 
-# 6. Build of the package
-dpkg-deb --build pkg wild-prompt.deb
+# 6. Building the .deb package
+echo "📦 Building .deb package..."
+dpkg-deb --build pkg ${APP_NAME}.deb
 
-echo "✅ Package auto-installer generated!"
+echo "---"
+echo "✅ Build completed successfully!"
+echo "📦 File generated: ${APP_NAME}.deb"
+echo "👉 Install with: sudo apt install ./${APP_NAME}.deb"
