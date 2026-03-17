@@ -18,6 +18,6 @@ func main() {
 	branch := strings.TrimSpace(string(out))
 	
 	if branch != "" {
-		fmt.Printf("git:%s", branch)
+		fmt.Printf("(git:%s)", branch)
 	}
 }
