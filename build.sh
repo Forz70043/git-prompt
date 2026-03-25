@@ -26,6 +26,7 @@ Version: $VERSION
 Section: utils
 Priority: optional
 Architecture: amd64
+Depends: git
 Maintainer: $MAINTAINER
 Description: $DESCRIPTION
 
