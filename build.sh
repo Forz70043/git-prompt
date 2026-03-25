@@ -62,12 +62,43 @@ fi
 exit 0
 EOF
 
-# 5. Configuration of Permissions
+# 5. Generate post-removal script (postrm)
+echo "📜 Generating post-removal script..."
+cat <<'EOF' > pkg/DEBIAN/postrm
+#!/bin/bash
+set -e
+BIN_NAME="git-prompt"
+
+remove_prompt() {
+    local target_file="$1"
+    local escaped_name
+    escaped_name=$(printf '%s\n' "$BIN_NAME" | sed 's/[[\.*^$()+?{|]/\\&/g')
+    if [ -f "$target_file" ] && grep -qF "$BIN_NAME" "$target_file"; then
+        sed -i '/# Git Prompt Integration/d' "$target_file"
+        sed -i "/$escaped_name/d" "$target_file"
+        echo "🧹 Prompt removed from $target_file"
+    fi
+}
+
+remove_prompt "/etc/bash.bashrc"
+
+if [ -n "$SUDO_USER" ]; then
+    REAL_USER_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+    if [ -n "$REAL_USER_HOME" ]; then
+        remove_prompt "$REAL_USER_HOME/.bashrc"
+    fi
+fi
+
+exit 0
+EOF
+
+# 6. Configuration of Permissions
 echo "🔐 Configuring permissions..."
 chmod 755 pkg/DEBIAN/postinst
+chmod 755 pkg/DEBIAN/postrm
 chmod 755 pkg/usr/local/bin/$APP_NAME
 
-# 6. Building the .deb package
+# 7. Building the .deb package
 echo "📦 Building .deb package..."
 dpkg-deb --build pkg ${APP_NAME}.deb
 
