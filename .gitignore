@@ -1,6 +1,5 @@
 # Binary files
-wild-prompt
-git-branch-label
+git-prompt
 *.deb
 
 # Temporary folders for build
